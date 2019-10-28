@@ -1,13 +1,15 @@
 // implement your API here
 const express = require('express');
+const cors = require('cors');
 const db = require('./data/db.js');
 const server = express();
 
 //middleware
 server.use(express.json());
+server.use(cors());
 
 server.get('/', (req, res) => {
-    res.send('Hello Node 23!');
+    res.send('Node API1 Project - Emily Richard Web23');
   });
 
 // POST to /api/users
@@ -15,15 +17,19 @@ server.post('/api/users', (req, res) => {
     const userInfo = req.body;
 
     console.log("user information", userInfo);
-
-    db.insert(userInfo)
-    .then(userID => {
-        res.json(userID)
-    })
-    .catch(err => {
-        console.log('Error!', err);
-        res.status(500).json({ error: 'Failed to add a user to database.' });
-    });
+    if (!userInfo.name || !userInfo.bio) {
+        res.status(400).json({ errorMessage: "Please provide name and bio for the user." })
+        console.log("Please provide name and bio for the user." )
+   } else {
+        db.insert(userInfo)
+        .then(user => {  // ❗ doesn't return user, returns id
+            res.status(201).json(user)
+        })
+        .catch(err => {
+            console.log('Error!', err);
+            res.status(500).json({ error: "There was an error while saving the user to the database" });
+        });
+    }
 });
 
 // GET from /api/users
@@ -34,20 +40,25 @@ server.get('/api/users', (req, res) => {
     })
     .catch(err => {
         console.log('Error!', err);
-        res.status(500).json({ error: 'Failed to fetch users from database.' });
+        res.status(500).json({ error: "The users information could not be retrieved." });
     });
 });
 
 // GET a user from /api/users/:id
 server.get('/api/users/:id', (req, res) => {
     const id = req.params.id;
-    db. findById(id)
+    db.findById(id)
     .then(user => {
-        res.json(user);
+        if (user) {
+            res.status(200).json(user);
+        }
+        else {
+            res.status(404).json({ message: "The user with the specified ID does not exist." });
+        }      
     })
     .catch(err => {
         console.log('Error!', err);
-        res.status(500).json({ error: 'Failed to fetch user from database.' });
+        res.status(500).json({ error: "The user information could not be retrieved." });
     });
 });
 
@@ -57,11 +68,12 @@ server.delete('/api/users/:id', (req, res) => {
 
     db.remove(id)
     .then(count => {
-        res.status(200).json({ message: `User was deleted.` });
+        count === 1 && res.status(200).json({ message: `User was deleted.` });
+        count !== 1 && res.status(404).json({ message: "The user with the specified ID does not exist." });
     })
     .catch(err => {
         console.log('Error!', err);
-        res.status(500).json({ error: 'Failed to delete user from database.' });
+        res.status(500).json({ error: "The user could not be removed" });
     });
 });
 
@@ -70,14 +82,23 @@ server.put('/api/users/:id', (req, res) => {
     const id = req.params.id;
     const newUser = req.body;
 
-    db.update(id, newUser)
-    .then(user => {
-        res.status(200).json(user)
-    })
-    .catch(err => {
-        console.log('Error!', err);
-        res.status(500).json({ error: 'Failed to update user in database.' });
-    });
+    if (!newUser.name || !newUser.bio) {
+        res.status(400).json({ errorMessage: "Please provide name and bio for the user." })
+        console.log("Please provide name and bio for the user." )
+    } else {
+        db.update(id, newUser)
+        .then(user => {
+            if (user) {
+                res.status(200).json(user) // ❗ doesn't return user, returns id
+            } else {
+                res.status(404).json({ message: "The user with the specified ID does not exist." });
+            }
+        })
+        .catch(err => {
+            console.log('Error!', err);
+            res.status(500).json({ error: "The user information could not be modified." });
+        });
+    };
 });
 
 const port = 8000;
